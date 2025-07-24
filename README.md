@@ -1,1 +1,13 @@
 # tech_eazy_devops_sudheer-reddy01
+
+STEPS TO RUN THE SCRIPT
+
+STEP 1: MAKE SURE YOUR SECURITY_GROUP_ID HAS INBOUND RULE CONFIGURED FOR PORT 80 STEP 2: GO TO .ENV FILE CHANGE THE VALUES ACCORDINGLY.
+
+COMMANDS TO RUN IN TERMINAL ONCE STEP 2 IS DONE.
+
+source .env
+
+chmod +x launch_ec2.sh dev_config.sh prod_config.sh
+
+./launch_ec2.sh dev
