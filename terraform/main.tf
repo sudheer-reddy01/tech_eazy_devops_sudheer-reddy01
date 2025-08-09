@@ -2,7 +2,7 @@ provider "aws" {
   region = var.region
 }
 
-#ff
+
 # 1.a Read-only S3 Role
 resource "aws_iam_role" "s3_readonly_role" {
   name = "s3-readonly-role"
