@@ -18,8 +18,9 @@ set -e
 
 echo "[INFO] Fetching values from Terraform state..."
 
-EC2_IP=$(terraform output -raw ec2_public_ip)
-BUCKET_NAME=$(terraform output -raw bucket_name)
+# Point terraform output commands to the terraform directory where state is
+EC2_IP=$(terraform -chdir=../terraform output -raw ec2_public_ip)
+BUCKET_NAME=$(terraform -chdir=../terraform output -raw bucket_name)
 
 echo "[INFO] EC2 IP: $EC2_IP"
 echo "[INFO] S3 Bucket: $BUCKET_NAME"
