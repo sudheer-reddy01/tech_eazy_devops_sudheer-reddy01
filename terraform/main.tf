@@ -70,34 +70,40 @@ resource "aws_iam_instance_profile" "ec2_instance_profile" {
   role = aws_iam_role.s3_writeonly_role.name
 }
 
-# 3. Create private S3 bucket with lifecycle rule
+# 3. Create private S3 bucket (no lifecycle here)
 resource "aws_s3_bucket" "log_bucket" {
-  bucket = var.bucket_name
-  acl    = "private"
-  force_destroy = true
-
-  lifecycle_rule {
-    id      = "delete-logs-after-7-days"
-    enabled = true
-
-    expiration {
-      days = 7
-    }
-
-    prefix = "" # Applies to all objects
-  }
+  bucket         = var.bucket_name
+  force_destroy  = true
 
   tags = {
     Name = var.bucket_name
   }
 }
 
+# 3.b Apply lifecycle policy separately
+resource "aws_s3_bucket_lifecycle_configuration" "log_lifecycle" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  rule {
+    id     = "delete-logs-after-7-days"
+    status = "Enabled"
+
+    filter {
+      prefix = "" # Applies to all objects
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+}
+
 # 4. EC2 instance with write-only role
 resource "aws_instance" "ec2_instance" {
-  ami                    = var.ami_id
-  instance_type          = var.instance_type
-  key_name               = var.ec2_key_name
-  iam_instance_profile   = aws_iam_instance_profile.ec2_instance_profile.name
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
+  key_name                    = var.ec2_key_name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_instance_profile.name
   associate_public_ip_address = true
 
   tags = {
