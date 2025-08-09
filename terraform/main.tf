@@ -3,8 +3,8 @@ provider "aws" {
 }
 
 # 1.a Read-only S3 
-resource "aws_iam_role" "s3_readonly_role" {
-  name = "s3-readonly-role-unique-2025-08-v2"
+resource "aws_iam_role" "s3_readonly_role_v3" {
+  name = "s3-readonly-role-unique-2025-08-v3"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -15,8 +15,8 @@ resource "aws_iam_role" "s3_readonly_role" {
   })
 }
 
-resource "aws_iam_policy" "s3_readonly_policy" {
-  name = "s3-readonly-policy-unique-2025-08-v2"
+resource "aws_iam_policy" "s3_readonly_policy_v3" {
+  name = "s3-readonly-policy-unique-2025-08-v3"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -27,19 +27,19 @@ resource "aws_iam_policy" "s3_readonly_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "s3_readonly_attach" {
-  role       = aws_iam_role.s3_readonly_role.name
-  policy_arn = aws_iam_policy.s3_readonly_policy.arn
+resource "aws_iam_role_policy_attachment" "s3_readonly_attach_v3" {
+  role       = aws_iam_role.s3_readonly_role_v3.name
+  policy_arn = aws_iam_policy.s3_readonly_policy_v3.arn
 }
 
 # 1.b Write-only Role (no read/download)
-resource "aws_iam_role" "s3_writeonly_role" {
-  name = "s3-writeonly-role-unique-2025-08-v2"
-  assume_role_policy = aws_iam_role.s3_readonly_role.assume_role_policy
+resource "aws_iam_role" "s3_writeonly_role_v3" {
+  name = "s3-writeonly-role-unique-2025-08-v3"
+  assume_role_policy = aws_iam_role.s3_readonly_role_v3.assume_role_policy
 }
 
-resource "aws_iam_policy" "s3_writeonly_policy" {
-  name = "s3-writeonly-policy-unique-2025-08-v2"
+resource "aws_iam_policy" "s3_writeonly_policy_v3" {
+  name = "s3-writeonly-policy-unique-2025-08-v3"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -59,15 +59,15 @@ resource "aws_iam_policy" "s3_writeonly_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "s3_writeonly_attach" {
-  role       = aws_iam_role.s3_writeonly_role.name
-  policy_arn = aws_iam_policy.s3_writeonly_policy.arn
+resource "aws_iam_role_policy_attachment" "s3_writeonly_attach_v3" {
+  role       = aws_iam_role.s3_writeonly_role_v3.name
+  policy_arn = aws_iam_policy.s3_writeonly_policy_v3.arn
 }
 
 # 2. Instance profile for EC2
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "ec2-instance-profile-unique-2025-08-v2"
-  role = aws_iam_role.s3_writeonly_role.name
+resource "aws_iam_instance_profile" "ec2_instance_profile_v3" {
+  name = "ec2-instance-profile-unique-2025-08-v3"
+  role = aws_iam_role.s3_writeonly_role_v3.name
 }
 
 # 3. Create private S3 bucket (no lifecycle here)
@@ -103,10 +103,10 @@ resource "aws_instance" "ec2_instance" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
   key_name                    = var.ec2_key_name
-  iam_instance_profile        = aws_iam_instance_profile.ec2_instance_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_instance_profile_v3.name
   associate_public_ip_address = true
 
   tags = {
-    Name = "WriteOnlyEC2-unique-2025-08-v2"
+    Name = "WriteOnlyEC2-unique-2025-08-v3"
   }
 }

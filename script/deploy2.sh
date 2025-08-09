@@ -9,8 +9,12 @@ fi
 source .env
 
 # ------------ VALIDATE ----------------
-if [[ -z "$KEY_PATH" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]]; then
-    echo "[ERROR] One or more required variables are missing in .env"
+if [[ -z "$KEY_PATH_ENV" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]]; then
+    echo "[ERROR] One or more required variables are missing."
+    echo "KEY_PATH_ENV='$KEY_PATH_ENV'"
+    echo "SSH_USER='$SSH_USER'"
+    echo "REPO_URL='$REPO_URL'"
+    echo "JAR_NAME='$JAR_NAME'"
     exit 1
 fi
 
@@ -65,10 +69,10 @@ EOF
 chmod +x remote_install.sh
 
 echo "[INFO] Copying install script to EC2..."
-scp -i "$KEY_PATH" -o StrictHostKeyChecking=no remote_install.sh "$SSH_USER@$EC2_IP:/home/$SSH_USER/"
+scp -i "$KEY_PATH_ENV" -o StrictHostKeyChecking=no remote_install.sh "$SSH_USER@$EC2_IP:/home/$SSH_USER/"
 
 echo "[INFO] Running install script on EC2..."
-ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "chmod +x remote_install.sh && sudo ./remote_install.sh"
+ssh -i "$KEY_PATH_ENV" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "chmod +x remote_install.sh && sudo ./remote_install.sh"
 
 echo "[INFO] Waiting for app to start (10s)..."
 sleep 10
@@ -78,7 +82,7 @@ curl -s --connect-timeout 5 "http://$EC2_IP/hello" || echo "[WARNING] App may no
 
 # ----- UPLOAD LOGS DIRECTLY (NO SHUTDOWN) -----
 echo "[ACTION] Uploading logs to S3..."
-ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "sudo /usr/local/bin/upload_logs.sh"
+ssh -i "$KEY_PATH_ENV" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "sudo /usr/local/bin/upload_logs.sh"
 echo "[INFO] Logs uploaded successfully. EC2 instance remains running."
 
 echo "[DONE] Workflow complete."

@@ -16,6 +16,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ap-south-1
       PEM_KEY: ${{ secrets.PEM_KEY }}
+      KEY_PATH_ENV: ./script/mykey.pem   # path where PEM will be saved
 
     steps:
       - name: Checkout code
@@ -30,26 +31,14 @@ jobs:
         working-directory: terraform
         run: terraform init
 
-      - name: Cleanup Terraform state for deleted resources
-        working-directory: terraform
-        run: |
-          terraform state rm aws_iam_role.s3_writeonly_role || true
-          terraform state rm aws_iam_policy.s3_writeonly_policy || true
-          terraform state rm aws_iam_role_policy_attachment.s3_writeonly_attach || true
-          terraform state rm aws_iam_role.s3_readonly_role || true
-          terraform state rm aws_iam_policy.s3_readonly_policy || true
-          terraform state rm aws_iam_role_policy_attachment.s3_readonly_attach || true
-          terraform state rm aws_iam_instance_profile.ec2_instance_profile || true
-          terraform state rm aws_s3_bucket.log_bucket || true
-
       - name: Terraform Apply
         working-directory: terraform
         run: terraform apply -auto-approve
 
       - name: Save PEM file
         run: |
-          echo "${PEM_KEY}" > mykey.pem
-          chmod 600 mykey.pem
+          echo "${PEM_KEY}" > ./script/mykey.pem
+          chmod 600 ./script/mykey.pem
 
       - name: Run Deploy Script
         working-directory: script
