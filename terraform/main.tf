@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 
-# 1.a Read-only S3 Role
+# 1.a Read-only S3 
 resource "aws_iam_role" "s3_readonly_role" {
   name = "s3-readonly-role"
   assume_role_policy = jsonencode({
