@@ -7,11 +7,6 @@ on:
     tags:
       - 'deploy-*'
   workflow_dispatch:
-    inputs:
-      stage:
-        description: 'Deployment stage (dev/prod/etc)'
-        required: true
-        default: dev
 
 jobs:
   deploy:
@@ -26,17 +21,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Determine stage
-        id: stage
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/deploy-* ]]; then
-            stage="${GITHUB_REF#refs/tags/deploy-}"
-          else
-            stage="${{ github.event.inputs.stage }}"
-          fi
-          echo "stage=$stage" >> $GITHUB_ENV
-          echo "Deployment stage: $stage"
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -48,7 +32,7 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve -var="stage=${{ env.stage }}"
+        run: terraform apply -auto-approve
 
       - name: Save PEM file
         run: |
