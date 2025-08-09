@@ -53,4 +53,4 @@ jobs:
 
       - name: Run Deploy Script
         working-directory: script
-        run: bash script/deploy2.sh
+        run: bash deploy2.sh

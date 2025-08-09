@@ -4,7 +4,7 @@ provider "aws" {
 
 # 1.a Read-only S3 
 resource "aws_iam_role" "s3_readonly_role" {
-  name = "s3-readonly-role-new-2025"
+  name = "s3-readonly-role-unique-2025-08"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -16,7 +16,7 @@ resource "aws_iam_role" "s3_readonly_role" {
 }
 
 resource "aws_iam_policy" "s3_readonly_policy" {
-  name = "s3-readonly-policy-new-2025"
+  name = "s3-readonly-policy-unique-2025-08"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -34,12 +34,12 @@ resource "aws_iam_role_policy_attachment" "s3_readonly_attach" {
 
 # 1.b Write-only Role (no read/download)
 resource "aws_iam_role" "s3_writeonly_role" {
-  name = "s3-writeonly-role-new-2025"
+  name = "s3-writeonly-role-unique-2025-08"
   assume_role_policy = aws_iam_role.s3_readonly_role.assume_role_policy
 }
 
 resource "aws_iam_policy" "s3_writeonly_policy" {
-  name = "s3-writeonly-policy-new-2025"
+  name = "s3-writeonly-policy-unique-2025-08"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -66,7 +66,7 @@ resource "aws_iam_role_policy_attachment" "s3_writeonly_attach" {
 
 # 2. Instance profile for EC2
 resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "ec2-instance-profile-new-2025"
+  name = "ec2-instance-profile-unique-2025-08"
   role = aws_iam_role.s3_writeonly_role.name
 }
 
@@ -107,6 +107,6 @@ resource "aws_instance" "ec2_instance" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "WriteOnlyEC2-New-2025"
+    Name = "WriteOnlyEC2-unique-2025-08"
   }
 }
