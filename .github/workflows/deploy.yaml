@@ -3,7 +3,7 @@ name: Provision and Deploy
 on:
   push:
     branches:
-      - main
+      - feature/my-change-updated
     tags:
       - 'deploy-*'
   workflow_dispatch:
