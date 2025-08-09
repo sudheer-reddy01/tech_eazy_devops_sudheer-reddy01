@@ -75,15 +75,9 @@ sleep 10
 echo "[INFO] Testing if app is reachable at: http://$EC2_IP/hello"
 curl -s --connect-timeout 5 "http://$EC2_IP/hello" || echo "[WARNING] App may not be reachable yet."
 
-# ---------------- Shutdown Prompt ----------------
-read -p "Do you want to shut down the EC2 instance now? [yes/no]: " CONFIRM
-if [[ "${CONFIRM,,}" == "yes" ]]; then
-    echo "[ACTION] Triggering log upload to S3 before shutdown..."
-    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "sudo /usr/local/bin/upload_logs.sh"
-    echo "[INFO] Logs uploaded. Now shutting down the instance..."
-    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "sudo shutdown -h now"
-else
-    echo "[INFO] Shutdown aborted. Instance is still running."
-fi
+# ----- UPLOAD LOGS DIRECTLY (NO SHUTDOWN) -----
+echo "[ACTION] Uploading logs to S3..."
+ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_IP" "sudo /usr/local/bin/upload_logs.sh"
+echo "[INFO] Logs uploaded successfully. EC2 instance remains running."
 
 echo "[DONE] Workflow complete."
