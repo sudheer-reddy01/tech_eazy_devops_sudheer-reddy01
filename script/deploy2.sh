@@ -8,7 +8,7 @@ fi
 
 source .env
 
-# ------------ VALIDATE -------------------
+# ------------ VALIDATE ----------------
 if [[ -z "$KEY_PATH" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]]; then
     echo "[ERROR] One or more required variables are missing in .env"
     exit 1
