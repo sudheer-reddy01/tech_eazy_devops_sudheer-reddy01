@@ -1,37 +1,60 @@
-name: Deploy Infrastructure and Run Script
+name: Provision and Deploy
 
 on:
   push:
     branches:
-      - feature/my-change-updated
+      - main
+    tags:
+      - 'deploy-*'
   workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Deployment stage (dev/prod/etc)'
+        required: true
+        default: dev
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ap-south-1
+      PEM_KEY: ${{ secrets.PEM_KEY }}
 
     steps:
-      # 1. Checkout repo
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # 2. Setup Terraform
+      - name: Determine stage
+        id: stage
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/deploy-* ]]; then
+            stage="${GITHUB_REF#refs/tags/deploy-}"
+          else
+            stage="${{ github.event.inputs.stage }}"
+          fi
+          echo "stage=$stage" >> $GITHUB_ENV
+          echo "Deployment stage: $stage"
+
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.5
+          terraform_version: 1.8.5
 
-      # 3. Terraform Init
       - name: Terraform Init
         working-directory: terraform
         run: terraform init
 
-      # 4. Terraform Apply
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve -var="bucket_name=my-private-bucket-12345"
+        run: terraform apply -auto-approve -var="stage=${{ env.stage }}"
 
-      # 5. Run deploy2.sh
-      - name: Run deploy script
-        working-directory: scripts
-        run: chmod +x deploy2.sh && ./deploy2.sh
+      - name: Save PEM file
+        run: |
+          echo "${PEM_KEY}" > mykey.pem
+          chmod 600 mykey.pem
+
+      - name: Run Deploy Script
+        working-directory: script
+        run: bash deploy2.sh
