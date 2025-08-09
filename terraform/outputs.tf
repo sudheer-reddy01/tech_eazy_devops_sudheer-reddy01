@@ -1,9 +1,9 @@
 output "readonly_role_arn" {
-  value = aws_iam_role.s3_readonly_role.arn
+  value = aws_iam_role.s3_readonly_role_v3.arn
 }
 
 output "writeonly_role_arn" {
-  value = aws_iam_role.s3_writeonly_role.arn
+  value = aws_iam_role.s3_writeonly_role_v3.arn
 }
 
 output "bucket_name" {
