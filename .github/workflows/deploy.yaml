@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - feature/my-change-updated
+  workflow_dispatch:
 
 env:
   AWS_REGION: ap-south-1
-  BUCKET_NAME: my-bucket-demo
+  BUCKET_NAME: my-bucket-demo # change or set from secret
 
 jobs:
   deploy:
@@ -15,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -26,7 +27,7 @@ jobs:
 
       # Terraform setup
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         working-directory: terraform
@@ -34,7 +35,7 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -var="bucket_name=${{ env.BUCKET_NAME }}"
 
       - name: Get EC2 IP from Terraform output
         id: ec2ip
@@ -43,12 +44,13 @@ jobs:
           IP=$(terraform output -raw ec2_public_ip)
           echo "EC2_IP=$IP" >> $GITHUB_ENV
 
-      # Deploy script on EC2
+      # Add SSH key
       - name: Add SSH key
         run: |
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > ec2_key.pem
           chmod 600 ec2_key.pem
 
+      # Run deploy script remotely
       - name: Run deploy2.sh on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -i ec2_key.pem ubuntu@${{ env.EC2_IP }} "bash -s" < scripts/deploy2.sh
