@@ -1,67 +1,71 @@
 #!/bin/bash
-
-# ------------ LOAD CONFIG ----------------
-if [ ! -f .env ]; then
-    echo "[ERROR] .env file not found. Please create one with required variables."
-    exit 1
-fi
-
-source .env
-
-# ------------ CREATE SSH KEY FILE IF MISSING ----------------
-if [ ! -f "$KEY_PATH_ENV" ]; then
-    if [ -n "$PEM_KEY" ]; then
-        echo "[INFO] SSH key file not found. Creating from PEM_KEY environment variable..."
-        mkdir -p "$(dirname "$KEY_PATH_ENV")"
-        echo "$PEM_KEY" > "$KEY_PATH_ENV"
-        sed -i 's/\r$//' "$KEY_PATH_ENV"  # Remove CRLF if present
-    else
-        echo "[ERROR] SSH key file not found at: $KEY_PATH_ENV"
-        echo "[ERROR] And PEM_KEY environment variable is empty."
-        exit 1
-    fi
-fi
-
-# ------------ VALIDATE ENV VARIABLES ----------------
-if [[ -z "$KEY_PATH_ENV" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]]; then
-    echo "[ERROR] One or more required variables are missing."
-    echo "KEY_PATH_ENV='$KEY_PATH_ENV'"
-    echo "SSH_USER='$SSH_USER'"
-    echo "REPO_URL='$REPO_URL'"
-    echo "JAR_NAME='$JAR_NAME'"
-    exit 1
-fi
-
-# ------------ VALIDATE SSH KEY ----------------
-# Fix permissions
-chmod 400 "$KEY_PATH_ENV"
-
-# Debug first line
-echo "[DEBUG] Showing first line of key file:"
-head -n 1 "$KEY_PATH_ENV" | cat -A
-
-# Check format
-if ! head -n 1 "$KEY_PATH_ENV" | grep -q "BEGIN RSA PRIVATE KEY"; then
-    echo "[ERROR] SSH key is not in valid RSA PEM format."
-    exit 1
-fi
-
-echo "[INFO] SSH key validation passed."
-
 set -e
 
+# ------------ CONFIG ------------
+TF_STATE="./terraform.tfstate"
+KEY_PATH="./mykey.pem"
+SSH_USER="ubuntu"
+GITHUB_REPO="https://github.com/Trainings-TechEazy/test-repo-for-devops"
+APP_JAR="target/hellomvc-0.0.1-SNAPSHOT.jar"
+EXPECTED_MSG="Hello from Spring MVC!"
+
+# ------------ FETCH VALUES FROM TERRAFORM ------------
 echo "[INFO] Fetching values from Terraform state..."
-EC2_IP=$(terraform -chdir=../terraform output -raw ec2_public_ip)
-BUCKET_NAME=$(terraform -chdir=../terraform output -raw bucket_name)
+EC2_IP=$(jq -r '.resources[] | select(.type=="aws_instance") | .instances[0].attributes.public_ip' "$TF_STATE")
+S3_BUCKET=$(jq -r '.resources[] | select(.type=="aws_s3_bucket") | .instances[0].attributes.bucket' "$TF_STATE")
+
+if [[ -z "$EC2_IP" || -z "$S3_BUCKET" ]]; then
+    echo "[ERROR] Could not fetch EC2 IP or S3 bucket from Terraform state."
+    exit 1
+fi
 
 echo "[INFO] EC2 IP: $EC2_IP"
-echo "[INFO] S3 Bucket: $BUCKET_NAME"
+echo "[INFO] S3 Bucket: $S3_BUCKET"
 
-# ----- CREATE REMOTE INSTALL SCRIPT -----
-cat <<EOF > remote_install.sh
-#!/bin/bash
+# ------------ SSH KEY FIX ------------
+chmod 400 "$KEY_PATH"
+
+# ------------ INSTALL & DEPLOY APP ON EC2 ------------
+echo "[INFO] Deploying application to EC2..."
+
+ssh -o StrictHostKeyChecking=no -i "$KEY_PATH" "$SSH_USER@$EC2_IP" bash << 'EOF'
 set -e
-
-echo "[REMOTE] Updating system and installing Java 21 & Maven..."
+echo "[EC2] Updating packages..."
 sudo apt-get update -y
-sudo apt-get install -y openjdk-21-jdk ma
+
+echo "[EC2] Installing Java 21, Maven, Git..."
+sudo apt-get install -y openjdk-21-jdk maven git
+
+echo "[EC2] Cloning repository..."
+rm -rf test-repo-for-devops
+git clone https://github.com/Trainings-TechEazy/test-repo-for-devops
+cd test-repo-for-devops
+
+echo "[EC2] Building application..."
+mvn clean package -DskipTests
+
+echo "[EC2] Running application..."
+sudo pkill -f "java -jar" || true
+nohup java -jar target/hellomvc-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+
+echo "[EC2] Installing curl..."
+sudo apt-get install -y curl
+EOF
+
+# ------------ TEST APP ------------
+echo "[INFO] Waiting for app to start..."
+sleep 15
+
+RESPONSE=$(curl -s "http://$EC2_IP/hello" || true)
+if [[ "$RESPONSE" == "$EXPECTED_MSG" ]]; then
+    echo "[SUCCESS] App is reachable and returned expected message!"
+else
+    echo "[ERROR] App test failed! Got: $RESPONSE"
+    exit 1
+fi
+
+# ------------ UPLOAD LOGS TO S3 ------------
+echo "[INFO] Uploading logs to S3..."
+ssh -i "$KEY_PATH" "$SSH_USER@$EC2_IP" "aws s3 cp app.log s3://$S3_BUCKET/app.log --acl private"
+
+echo "[INFO] Deployment complete."
