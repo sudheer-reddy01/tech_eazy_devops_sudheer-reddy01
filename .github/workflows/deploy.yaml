@@ -43,3 +43,9 @@ jobs:
       - name: Run Deploy Script
         working-directory: script
         run: bash deploy2.sh
+
+      # This step runs no matter success or failure
+      - name: Terraform Destroy (Always Run)
+        if: always()
+        working-directory: terraform
+        run: terraform destroy -auto-approve
