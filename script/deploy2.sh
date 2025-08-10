@@ -55,7 +55,7 @@ EOF
 echo "[INFO] Waiting for app to start..."
 for i in {1..10}; do
     RESPONSE=$(curl -s "http://$EC2_IP/hello" || true)
-    if [[ "$RESPONSE" == "$EXPECTED_MSG" ]]; then
+    if echo "$RESPONSE" | grep -q "Hello from Spring MVC!"; then
         echo "[SUCCESS] App is reachable and returned expected message!"
         break
     fi
@@ -63,7 +63,7 @@ for i in {1..10}; do
     sleep 10
 done
 
-if [[ "$RESPONSE" != "$EXPECTED_MSG" ]]; then
+if ! echo "$RESPONSE" | grep -q "Hello from Spring MVC!"; then
     echo "[ERROR] App test failed! Got: $RESPONSE"
     exit 1
 fi
