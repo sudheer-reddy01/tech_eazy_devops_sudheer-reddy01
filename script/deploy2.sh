@@ -8,6 +8,10 @@ fi
 
 source .env
 
+echo "[DEBUG] Showing first line of key file:"
+head -n 1 "$KEY_PATH_ENV" | cat -A
+
+
 # ------------ VALIDATE ENV VARIABLES ----------------
 if [[ -z "$KEY_PATH_ENV" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]]; then
     echo "[ERROR] One or more required variables are missing."
