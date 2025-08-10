@@ -2,7 +2,7 @@
 set -e
 
 # ------------ CONFIG ------------
-TF_STATE="./terraform/terraform.tfstate"
+TF_DIR="./terraform"
 KEY_PATH="./script/mykey.pem"
 SSH_USER="ubuntu"
 GITHUB_REPO="https://github.com/Trainings-TechEazy/test-repo-for-devops"
@@ -10,17 +10,20 @@ APP_JAR="target/hellomvc-0.0.1-SNAPSHOT.jar"
 EXPECTED_MSG="Hello from Spring MVC!"
 
 # ------------ FETCH VALUES FROM TERRAFORM ------------
-echo "[INFO] Fetching values from Terraform state..."
-if [ ! -f "$TF_STATE" ]; then
-    echo "[ERROR] Terraform state file not found at $TF_STATE"
+echo "[INFO] Fetching values from Terraform outputs..."
+if [ ! -d "$TF_DIR" ]; then
+    echo "[ERROR] Terraform directory not found: $TF_DIR"
     exit 1
 fi
 
-EC2_IP=$(jq -r '.resources[] | select(.type=="aws_instance") | .instances[0].attributes.public_ip' "$TF_STATE")
-S3_BUCKET=$(jq -r '.resources[] | select(.type=="aws_s3_bucket") | .instances[0].attributes.bucket' "$TF_STATE")
+pushd "$TF_DIR" >/dev/null
+terraform init -input=false
+EC2_IP=$(terraform output -raw ec2_public_ip)
+S3_BUCKET=$(terraform output -raw bucket_name)
+popd >/dev/null
 
-if [[ -z "$EC2_IP" || -z "$S3_BUCKET" || "$EC2_IP" == "null" || "$S3_BUCKET" == "null" ]]; then
-    echo "[ERROR] Could not fetch EC2 IP or S3 bucket from Terraform state."
+if [[ -z "$EC2_IP" || -z "$S3_BUCKET" ]]; then
+    echo "[ERROR] Could not fetch EC2 IP or S3 bucket from Terraform outputs."
     exit 1
 fi
 
