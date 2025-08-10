@@ -46,20 +46,20 @@ cd test-repo-for-devops
 echo "[EC2] Building application..."
 mvn clean package -DskipTests
 
-echo "[EC2] Running application..."
+echo "[EC2] Running application on port 80..."
 sudo pkill -f "java -jar" || true
-nohup java -jar target/hellomvc-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+nohup sudo java -jar target/hellomvc-0.0.1-SNAPSHOT.jar --server.port=80 > app.log 2>&1 &
 EOF
 
 # ------------ TEST APP WITH RETRIES ------------
 echo "[INFO] Waiting for app to start..."
-for i in {1..5}; do
+for i in {1..10}; do
     RESPONSE=$(curl -s "http://$EC2_IP/hello" || true)
     if [[ "$RESPONSE" == "$EXPECTED_MSG" ]]; then
         echo "[SUCCESS] App is reachable and returned expected message!"
         break
     fi
-    echo "[INFO] Attempt $i/5 failed. Retrying in 10s..."
+    echo "[INFO] Attempt $i/10 failed. Retrying in 10s..."
     sleep 10
 done
 
