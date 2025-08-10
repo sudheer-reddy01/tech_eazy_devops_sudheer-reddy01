@@ -8,7 +8,7 @@ fi
 
 source .env
 
-# ------------ VALIDATE ----------------
+# ------------ VALIDATE ENV VARIABLES ----------------
 if [[ -z "$KEY_PATH_ENV" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]]; then
     echo "[ERROR] One or more required variables are missing."
     echo "KEY_PATH_ENV='$KEY_PATH_ENV'"
@@ -18,11 +18,32 @@ if [[ -z "$KEY_PATH_ENV" || -z "$SSH_USER" || -z "$REPO_URL" || -z "$JAR_NAME" ]
     exit 1
 fi
 
+# ------------ VALIDATE SSH KEY ----------------
+if [ ! -f "$KEY_PATH_ENV" ]; then
+    echo "[ERROR] SSH key not found at: $KEY_PATH_ENV"
+    exit 1
+fi
+
+# Convert CRLF to LF if needed
+if grep -q $'\r' "$KEY_PATH_ENV"; then
+    echo "[INFO] Converting Windows line endings in SSH key..."
+    sed -i 's/\r$//' "$KEY_PATH_ENV"
+fi
+
+# Fix permissions if too open
+chmod 400 "$KEY_PATH_ENV"
+
+# Check if it's a valid PEM RSA key
+if ! head -n 1 "$KEY_PATH_ENV" | grep -q "BEGIN RSA PRIVATE KEY"; then
+    echo "[ERROR] SSH key is not in valid RSA PEM format."
+    exit 1
+fi
+
+echo "[INFO] SSH key validation passed."
+
 set -e
 
 echo "[INFO] Fetching values from Terraform state..."
-
-# Point terraform output commands to the terraform directory where state is
 EC2_IP=$(terraform -chdir=../terraform output -raw ec2_public_ip)
 BUCKET_NAME=$(terraform -chdir=../terraform output -raw bucket_name)
 
