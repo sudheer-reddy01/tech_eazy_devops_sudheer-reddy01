@@ -37,7 +37,7 @@ jobs:
 
       - name: Save PEM file
         run: |
-          echo "${EC2_PRIVATE_KEY}" > ./script/mykey.pem
+          printf "%s" "${EC2_PRIVATE_KEY}" > ./script/mykey.pem
           chmod 600 ./script/mykey.pem
 
       - name: Run Deploy Script
