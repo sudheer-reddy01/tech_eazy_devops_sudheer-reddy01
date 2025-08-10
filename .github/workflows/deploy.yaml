@@ -35,10 +35,15 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      - name: Save PEM file
+
+
+      - name: Prepare SSH key
         run: |
-          printf "%s" "${EC2_PRIVATE_KEY}" > "${KEY_PATH_ENV}"
-          chmod 600 "${KEY_PATH_ENV}"
+         mkdir -p script
+         echo "$PEM_KEY" > ./script/mykey.pem
+         sed -i 's/\r$//' ./script/mykey.pem   # remove CRLF
+         chmod 400 ./script/mykey.pem
+
 
 
       - name: Run Deploy Script
