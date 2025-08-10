@@ -2,8 +2,8 @@
 set -e
 
 # ------------ CONFIG ------------
-TF_DIR="./terraform"
-KEY_PATH="./script/mykey.pem"
+TF_DIR="../terraform"  # Adjusted since workflow runs from script/
+KEY_PATH="./mykey.pem"
 SSH_USER="ubuntu"
 GITHUB_REPO="https://github.com/Trainings-TechEazy/test-repo-for-devops"
 APP_JAR="target/hellomvc-0.0.1-SNAPSHOT.jar"
@@ -11,13 +11,7 @@ EXPECTED_MSG="Hello from Spring MVC!"
 
 # ------------ FETCH VALUES FROM TERRAFORM ------------
 echo "[INFO] Fetching values from Terraform outputs..."
-if [ ! -d "$TF_DIR" ]; then
-    echo "[ERROR] Terraform directory not found: $TF_DIR"
-    exit 1
-fi
-
 pushd "$TF_DIR" >/dev/null
-terraform init -input=false
 EC2_IP=$(terraform output -raw ec2_public_ip)
 S3_BUCKET=$(terraform output -raw bucket_name)
 popd >/dev/null
@@ -31,10 +25,6 @@ echo "[INFO] EC2 IP: $EC2_IP"
 echo "[INFO] S3 Bucket: $S3_BUCKET"
 
 # ------------ SSH KEY FIX ------------
-if [ ! -f "$KEY_PATH" ]; then
-    echo "[ERROR] SSH key file not found at: $KEY_PATH"
-    exit 1
-fi
 chmod 400 "$KEY_PATH"
 
 # ------------ INSTALL & DEPLOY APP ON EC2 ------------
@@ -61,14 +51,19 @@ sudo pkill -f "java -jar" || true
 nohup java -jar target/hellomvc-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
 EOF
 
-# ------------ TEST APP ------------
+# ------------ TEST APP WITH RETRIES ------------
 echo "[INFO] Waiting for app to start..."
-sleep 20
+for i in {1..5}; do
+    RESPONSE=$(curl -s "http://$EC2_IP/hello" || true)
+    if [[ "$RESPONSE" == "$EXPECTED_MSG" ]]; then
+        echo "[SUCCESS] App is reachable and returned expected message!"
+        break
+    fi
+    echo "[INFO] Attempt $i/5 failed. Retrying in 10s..."
+    sleep 10
+done
 
-RESPONSE=$(curl -s "http://$EC2_IP/hello" || true)
-if [[ "$RESPONSE" == "$EXPECTED_MSG" ]]; then
-    echo "[SUCCESS] App is reachable and returned expected message!"
-else
+if [[ "$RESPONSE" != "$EXPECTED_MSG" ]]; then
     echo "[ERROR] App test failed! Got: $RESPONSE"
     exit 1
 fi
@@ -76,6 +71,6 @@ fi
 # ------------ UPLOAD LOGS TO S3 ------------
 echo "[INFO] Uploading logs to S3..."
 ssh -o StrictHostKeyChecking=no -i "$KEY_PATH" "$SSH_USER@$EC2_IP" \
-    "aws s3 cp app.log s3://$S3_BUCKET/app.log --acl private"
+    "aws s3 cp app.log s3://$S3_BUCKET/app-\$(date +%F-%H%M%S).log --acl private"
 
 echo "[INFO] Deployment complete."
