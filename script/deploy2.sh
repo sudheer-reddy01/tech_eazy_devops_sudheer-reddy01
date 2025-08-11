@@ -2,7 +2,7 @@
 set -e
 
 # ------------ CONFIG ------------
-TF_DIR="../terraform"  # Adjusted since workflow runs from script/
+TF_DIR="../terraform"  # Adjusted since workflow runs from scrip
 KEY_PATH="./mykey.pem"
 SSH_USER="ubuntu"
 GITHUB_REPO="https://github.com/Trainings-TechEazy/test-repo-for-devops"
