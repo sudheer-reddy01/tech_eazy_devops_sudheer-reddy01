@@ -25,7 +25,7 @@ fi
 echo "[INFO] EC2 IP: $EC2_IP"
 echo "[INFO] S3 Bucket: $S3_BUCKET"
 
-# ------------ SSH KEY FIX ------------
+# ------------ SSH KEY FIX -----
 chmod 400 "$KEY_PATH"
 
 # ------------ INSTALL & DEPLOY APP ON EC2 ------------

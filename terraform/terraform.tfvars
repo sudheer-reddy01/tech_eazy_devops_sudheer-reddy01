@@ -1,2 +1,2 @@
-ec2_key_name  = "keyww"   #agdd you .pem file name
+ec2_key_name  = "keyww"   #agdd you .pem file 
 bucket_name   = "shjj"    #add your bucket names
