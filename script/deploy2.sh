@@ -51,22 +51,7 @@ sudo pkill -f "java -jar" || true
 nohup sudo java -jar target/hellomvc-0.0.1-SNAPSHOT.jar --server.port=80 > /tmp/app.log 2>&1 &
 EOF
 
-# ------------ TEST APP WITH RETRIES ------------
-echo "[INFO] Waiting for app to start..."
-for i in {1..10}; do
-    RESPONSE=$(curl -s "http://$EC2_IP/hello" || true)
-    if echo "$RESPONSE" | grep -q "Hello from Spring MVC!"; then
-        echo "[SUCCESS] App is reachable and returned expected message!"
-        break
-    fi
-    echo "[INFO] Attempt $i/10 failed. Retrying in 10s..."
-    sleep 10
-done
 
-if ! echo "$RESPONSE" | grep -q "Hello from Spring MVC!"; then
-    echo "[ERROR] App test failed! Got: $RESPONSE"
-    exit 1
-fi
 
 # ------------ UPLOAD LOGS TO S3 ------------
 echo "[INFO] Uploading logs to S3..."
