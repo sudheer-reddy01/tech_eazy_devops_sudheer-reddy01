@@ -77,4 +77,4 @@ jobs:
       - name: Terraform Destroy (Always Run)
         if: always()
         working-directory: terraform
-        run: terraform destroy -auto-approve -var="stage=${DEPLOY_STAGE}"
+        run: terraform destroy -auto-approve
