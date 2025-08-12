@@ -39,7 +39,7 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve -var="stage=${DEPLOY_STAGE}"
+        run: terraform apply -auto-approve
 
       - name: Get EC2 Public IP from Terraform output
         id: ec2_ip
