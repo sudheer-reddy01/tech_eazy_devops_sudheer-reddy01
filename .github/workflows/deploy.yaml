@@ -5,8 +5,13 @@ on:
     branches:
       - feature/my-change-updated
     tags:
-      - 'deploy-*'
+      - 'deploy-*' # Matches deploy-dev, deploy-prod, etc.
   workflow_dispatch:
+    inputs:
+      stage:
+        description: "Deployment stage (dev/prod)"
+        required: true
+        default: "dev"
 
 jobs:
   deploy:
@@ -17,6 +22,7 @@ jobs:
       AWS_DEFAULT_REGION: ap-south-1
       PEM_KEY: ${{ secrets.PEM_KEY }}
       KEY_PATH_ENV: ./script/mykey.pem
+      DEPLOY_STAGE: ${{ github.event.inputs.stage || 'dev' }}
 
     steps:
       - name: Checkout code
@@ -33,7 +39,7 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -var="stage=${DEPLOY_STAGE}"
 
       - name: Get EC2 Public IP from Terraform output
         id: ec2_ip
@@ -68,8 +74,7 @@ jobs:
           echo "❌ App did not respond correctly at /hello."
           exit 1
 
-      # This step runs no matter success or failure
       - name: Terraform Destroy (Always Run)
         if: always()
         working-directory: terraform
-        run: terraform destroy -auto-approve
+        run: terraform destroy -auto-approve -var="stage=${DEPLOY_STAGE}"
