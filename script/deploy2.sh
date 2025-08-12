@@ -2,12 +2,13 @@
 set -e
 
 # ------------ CONFIG ------------
-TF_DIR="../terraform"  # Adjusted since workflow runs from scrip
+TF_DIR="../terraform"  # Path to Terraform folder
 KEY_PATH="./mykey.pem"
 SSH_USER="ubuntu"
 GITHUB_REPO="https://github.com/Trainings-TechEazy/test-repo-for-devops"
 APP_JAR="target/hellomvc-0.0.1-SNAPSHOT.jar"
 EXPECTED_MSG="Hello from Spring MVC!"
+APP_ENDPOINT="/hello"   # The app endpoint to check
 
 # ------------ FETCH VALUES FROM TERRAFORM ------------
 echo "[INFO] Fetching values from Terraform outputs..."
@@ -30,7 +31,7 @@ chmod 400 "$KEY_PATH"
 # ------------ INSTALL & DEPLOY APP ON EC2 ------------
 echo "[INFO] Deploying application to EC2..."
 
-ssh -o StrictHostKeyChecking=no -i "$KEY_PATH" "$SSH_USER@$EC2_IP" bash << 'EOF'
+ssh -o StrictHostKeyChecking=no -i "$KEY_PATH" "$SSH_USER@$EC2_IP" bash << EOF
 set -e
 echo "[EC2] Updating packages..."
 sudo apt-get update -y
@@ -40,7 +41,7 @@ sudo apt-get install -y openjdk-21-jdk maven git awscli curl
 
 echo "[EC2] Cloning repository..."
 rm -rf test-repo-for-devops
-git clone https://github.com/Trainings-TechEazy/test-repo-for-devops
+git clone $GITHUB_REPO
 cd test-repo-for-devops
 
 echo "[EC2] Building application..."
@@ -48,10 +49,26 @@ mvn clean package -DskipTests
 
 echo "[EC2] Running application on port 80..."
 sudo pkill -f "java -jar" || true
-nohup sudo java -jar target/hellomvc-0.0.1-SNAPSHOT.jar --server.port=80 > /tmp/app.log 2>&1 &
+nohup sudo java -jar $APP_JAR --server.port=80 > /tmp/app.log 2>&1 &
 EOF
 
+# ------------ WAIT UNTIL APP IS RUNNING ------------
+echo "[INFO] Waiting for app to be ready..."
+MAX_RETRIES=15
+for i in $(seq 1 $MAX_RETRIES); do
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://$EC2_IP$APP_ENDPOINT" || true)
+    if [[ "$STATUS" == "200" ]]; then
+        echo "[INFO] App is up and responding on port 80."
+        break
+    fi
+    echo "[INFO] Waiting for app to start... ($i/$MAX_RETRIES)"
+    sleep 5
+done
 
+if [[ "$STATUS" != "200" ]]; then
+    echo "[ERROR] App did not start in expected time."
+    exit 1
+fi
 
 # ------------ UPLOAD LOGS TO S3 ------------
 echo "[INFO] Uploading logs to S3..."
