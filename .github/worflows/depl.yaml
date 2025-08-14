@@ -5,7 +5,7 @@ on:
     branches:
       - feature/my-change-updated
     tags:
-      - 'deploy-*' # Matches deploy-dev, deploy-prod
+      - 'deploy-*' # Matches deploy-dev, deploy-prod, etc.
   workflow_dispatch:
     inputs:
       stage:
