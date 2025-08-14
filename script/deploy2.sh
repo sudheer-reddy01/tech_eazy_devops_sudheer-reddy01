@@ -1,14 +1,7 @@
 #!/bin/bash
 set -e
 
-# ------------ CONFIG ------------
-TF_DIR="../terraform"  # Path to Terraform folder
-KEY_PATH="./mykey.pem"
-SSH_USER="ubuntu"
-GITHUB_REPO="https://github.com/Trainings-TechEazy/test-repo-for-devops"
-APP_JAR="target/hellomvc-0.0.1-SNAPSHOT.jar"
-EXPECTED_MSG="Hello from Spring MVC!"
-APP_ENDPOINT="/hello"   # The app endpoint to check
+source .env
 
 # ------------ FETCH VALUES FROM TERRAFORM ------------
 echo "[INFO] Fetching values from Terraform outputs..."
