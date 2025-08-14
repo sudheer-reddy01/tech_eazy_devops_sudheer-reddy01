@@ -1,4 +1,4 @@
-name: deploy(feature-my-change-updated)
+name: Provision and Deploy
 
 on:
   push:
