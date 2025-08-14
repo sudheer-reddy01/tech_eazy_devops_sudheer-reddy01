@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'deploy-*' # Matches deploy-dev, deploy-prod, etc.
+      - 'deploy-*' # Matches deploy-dev, deploy-prod
   workflow_dispatch:
     inputs:
       stage:
