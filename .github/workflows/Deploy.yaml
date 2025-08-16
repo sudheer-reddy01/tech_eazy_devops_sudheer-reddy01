@@ -1,4 +1,4 @@
-name: Provision_deploy
+name: Deploying(branch)
 
 on:
   push:
