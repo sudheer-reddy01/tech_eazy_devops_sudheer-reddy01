@@ -21,7 +21,7 @@ echo "[INFO] S3 Bucket: $S3_BUCKET"
 # ------------ SSH KEY FIX -----
 chmod 400 "$KEY_PATH"
 
-# ------------ INSTALL & DEPLOY APP ON EC2 ------------
+# ------------ INSTALL & DEPLOY APP ON EC2 ----------
 echo "[INFO] Deploying application to EC2..."
 
 ssh -o StrictHostKeyChecking=no -i "$KEY_PATH" "$SSH_USER@$EC2_IP" bash << EOF
