@@ -3,7 +3,7 @@ name: Provision and Deploy
 on:
   push:
     branches:
-      - main
+      - main-clean
     tags:
       - 'deploy-*' # Matches deploy-dev, deploy-prod
   workflow_dispatch:
