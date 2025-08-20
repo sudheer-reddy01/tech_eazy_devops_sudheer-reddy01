@@ -3,7 +3,7 @@ set -e
 
 source .env
 
-# ------------ FETCH VALUES FROM TERRAFORM ------------
+# ------------ FETCH VALUES FROM TERRAFORM ----------
 echo "[INFO] Fetching values from Terraform outputs..."
 pushd "$TF_DIR" >/dev/null
 EC2_IP=$(terraform output -raw ec2_public_ip)
