@@ -4,29 +4,46 @@ on:
   push:
     branches:
       - main-clean
+      -assig4
     tags:
-      - 'deploy-*' # Matches deploy-dev, deploy-prod
+      - 'deploy-*'  # Matches deploy-dev, deploy-prod
   workflow_dispatch:
     inputs:
       stage:
-        description: "Deployment stage (dev/prod)"
-        required: true
+        description: "Deployment stage (e.g., dev, prod, qa)"
+        required: false
         default: "dev"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ap-south-1
       PEM_KEY: ${{ secrets.PEM_KEY }}
       KEY_PATH_ENV: ./script/mykey.pem
-      DEPLOY_STAGE: ${{ github.event.inputs.stage || 'dev' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Extract deployment stage
+        id: stage
+        run: |
+          echo "GITHUB_REF: $GITHUB_REF"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "stage=${{ github.event.inputs.stage }}" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == refs/tags/deploy-* ]]; then
+            TAG_STAGE=$(echo "${GITHUB_REF}" | sed 's|refs/tags/deploy-||')
+            echo "stage=${TAG_STAGE}" >> $GITHUB_OUTPUT
+          else
+            echo "stage=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set DEPLOY_STAGE
+        run: echo "DEPLOY_STAGE=${{ steps.stage.outputs.stage }}" >> $GITHUB_ENV
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -41,40 +58,40 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      - name: Get EC2 Public IP from Terraform output
+      - name: Get EC2 Public IP from Terraform
         id: ec2_ip
         working-directory: terraform
         run: |
           EC2_IP=$(terraform output -raw ec2_public_ip)
-          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
+          echo "EC2_IP=$EC2_IP" >> $GITHUB_ENV
 
-      - name: Prepare SSH key
+      - name: Prepare SSH Key
         run: |
           mkdir -p script
-          echo "$PEM_KEY" > ./script/mykey.pem
-          sed -i 's/\r$//' ./script/mykey.pem
-          chmod 400 ./script/mykey.pem
+          echo "$PEM_KEY" > $KEY_PATH_ENV
+          sed -i 's/\r$//' $KEY_PATH_ENV
+          chmod 400 $KEY_PATH_ENV
 
-      - name: Run Deploy Script
+      - name: Run Deployment Script
         working-directory: script
         run: bash deploy2.sh
 
-      - name: Health Check - Validate Port 80 `/hello`
+      - name: Health Check - `/hello`
         run: |
-          echo "Checking app health at http://${{ steps.ec2_ip.outputs.ec2_ip }}/hello ..."
+          echo "Checking app at http://${{ env.EC2_IP }}/hello ..."
           for i in {1..10}; do
-            if curl -s --max-time 5 "http://${{ steps.ec2_ip.outputs.ec2_ip }}/hello" | grep -q "Hello"; then
-              echo "✅ App is running at /hello!"
+            if curl -s --max-time 5 "http://${{ env.EC2_IP }}/hello" | grep -q "Hello"; then
+              echo "✅ App is up!"
               exit 0
             else
-              echo "Attempt $i/10 failed. Retrying in 10s..."
+              echo "Attempt $i/10 failed. Retrying..."
               sleep 10
             fi
           done
-          echo "❌ App did not respond correctly at /hello."
+          echo "❌ App not responding."
           exit 1
 
-      - name: Terraform Destroy (Always Run)
+      - name: Terraform Destroy
         if: always()
         working-directory: terraform
         run: terraform destroy -auto-approve
