@@ -2,8 +2,9 @@
 set -e
 
 # ---------- Stage selection ----------
-STAGE="${1:-dev}"
-CONFIG_FILE="configs/${STAGE}.json"
+STAGE="${DEPLOY_STAGE:-dev}"
+CONFIG_FILE="../configs/${STAGE}.json"
+
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
   echo "[ERROR] Config file not found: $CONFIG_FILE"
