@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main-clean
-      -assig4
+      - assig4
     tags:
       - 'deploy-*'  # Matches deploy-dev, deploy-prod
   workflow_dispatch:
@@ -13,6 +13,7 @@ on:
         description: "Deployment stage (e.g., dev, prod, qa)"
         required: false
         default: "dev"
+
 
 jobs:
   deploy:
