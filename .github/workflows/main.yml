@@ -6,14 +6,13 @@ on:
       - main-clean
       - assig4
     tags:
-      - 'deploy-*'  # Matches deploy-dev, deploy-prod
+      - 'deploy-*'  # Matches deploy-dev, deploy-prod, etc.
   workflow_dispatch:
     inputs:
       stage:
         description: "Deployment stage (e.g., dev, prod, qa)"
         required: false
         default: "dev"
-
 
 jobs:
   deploy:
@@ -55,9 +54,23 @@ jobs:
         working-directory: terraform
         run: terraform init
 
+      - name: Debug files and env
+        working-directory: terraform
+        run: |
+          ls -l
+          echo "DEPLOY_STAGE=${{ env.DEPLOY_STAGE }}"
+
+      - name: Check if tfvars file exists
+        working-directory: terraform
+        run: |
+          if [[ ! -f "${{ env.DEPLOY_STAGE }}.tfvars" ]]; then
+            echo "ERROR: Variable file '${{ env.DEPLOY_STAGE }}.tfvars' not found!"
+            exit 1
+          fi
+
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve
+        run: terraform apply -var-file=${{ env.DEPLOY_STAGE }}.tfvars -auto-approve
 
       - name: Get EC2 Public IP from Terraform
         id: ec2_ip
