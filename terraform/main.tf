@@ -2,14 +2,14 @@ provider "aws" {
   region = var.region
 }
 
-# Get default VPC
 data "aws_vpc" "default" {
   default = true
 }
 
-# 1.a Read-only S3 Role & Policy
-resource "aws_iam_role" "s3_readonly_role_v4" {
-  name = "s3-readonly-role-unique-2025-08-10-v4"
+# ---------- IAM Roles & Policies ----------
+
+resource "aws_iam_role" "s3_readonly_role" {
+  name = "s3-readonly-role-${var.stage}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -20,8 +20,8 @@ resource "aws_iam_role" "s3_readonly_role_v4" {
   })
 }
 
-resource "aws_iam_policy" "s3_readonly_policy_v4" {
-  name = "s3-readonly-policy-unique-2025-08-10-v4"
+resource "aws_iam_policy" "s3_readonly_policy" {
+  name = "s3-readonly-policy-${var.stage}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -32,56 +32,54 @@ resource "aws_iam_policy" "s3_readonly_policy_v4" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "s3_readonly_attach_v4" {
-  role       = aws_iam_role.s3_readonly_role_v4.name
-  policy_arn = aws_iam_policy.s3_readonly_policy_v4.arn
+resource "aws_iam_role_policy_attachment" "s3_readonly_attach" {
+  role       = aws_iam_role.s3_readonly_role.name
+  policy_arn = aws_iam_policy.s3_readonly_policy.arn
 }
 
-# 1.b Write-only Role (no read/download)
-resource "aws_iam_role" "s3_writeonly_role_v4" {
-  name = "s3-writeonly-role-unique-2025-08-10-v4"
-  assume_role_policy = aws_iam_role.s3_readonly_role_v4.assume_role_policy
+resource "aws_iam_role" "s3_writeonly_role" {
+  name = "s3-writeonly-role-${var.stage}"
+  assume_role_policy = aws_iam_role.s3_readonly_role.assume_role_policy
 }
 
-resource "aws_iam_policy" "s3_writeonly_policy_v4" {
-  name = "s3-writeonly-policy-unique-2025-08-10-v4"
+resource "aws_iam_policy" "s3_writeonly_policy" {
+  name = "s3-writeonly-policy-${var.stage}"
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:CreateBucket",
-          "s3:PutBucketPolicy"
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.bucket_name}",
-          "arn:aws:s3:::${var.bucket_name}/*"
-        ]
-      }
-    ]
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:PutObject",
+        "s3:CreateBucket",
+        "s3:PutBucketPolicy"
+      ]
+      Resource = [
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
+      ]
+    }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "s3_writeonly_attach_v4" {
-  role       = aws_iam_role.s3_writeonly_role_v4.name
-  policy_arn = aws_iam_policy.s3_writeonly_policy_v4.arn
+resource "aws_iam_role_policy_attachment" "s3_writeonly_attach" {
+  role       = aws_iam_role.s3_writeonly_role.name
+  policy_arn = aws_iam_policy.s3_writeonly_policy.arn
 }
 
-# 2. Instance profile for EC2 with write-only role
-resource "aws_iam_instance_profile" "ec2_instance_profile_v4" {
-  name = "ec2-instance-profile-unique-2025-08-10-v4"
-  role = aws_iam_role.s3_writeonly_role_v4.name
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "ec2-instance-profile-${var.stage}"
+  role = aws_iam_role.s3_writeonly_role.name
 }
 
-# 3. Create private S3 bucket with lifecycle policy
+# ---------- S3 Bucket ----------
+
 resource "aws_s3_bucket" "log_bucket" {
   bucket        = var.bucket_name
   force_destroy = true
 
   tags = {
-    Name = var.bucket_name
+    Name  = var.bucket_name
+    Stage = var.stage
   }
 }
 
@@ -93,7 +91,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "log_lifecycle" {
     status = "Enabled"
 
     filter {
-      prefix = "" # applies to all objects
+      prefix = ""
     }
 
     expiration {
@@ -102,10 +100,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "log_lifecycle" {
   }
 }
 
-# 4. Security Group allowing SSH and HTTP on default VPC
+# ---------- Security Group ----------
+
 resource "aws_security_group" "ec2_sg" {
-  name        = "ec2-security-group-unique-2025-08-10"
-  description = "Allow SSH and HTTP inbound traffic"
+  name        = "ec2-sg-${var.stage}"
+  description = "Allow SSH and HTTP"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
@@ -125,7 +124,7 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   egress {
-    description = "Allow all outbound traffic"
+    description = "Allow all outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -133,20 +132,23 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   tags = {
-    Name = "EC2 Security Group"
+    Name  = "EC2 Security Group - ${var.stage}"
+    Stage = var.stage
   }
 }
 
-# 5. EC2 instance with write-only IAM role and attached security group
+# ---------- EC2 Instance ----------
+
 resource "aws_instance" "ec2_instance" {
   ami                         = var.ami_id
   instance_type               = var.instance_type
   key_name                    = var.ec2_key_name
-  iam_instance_profile        = aws_iam_instance_profile.ec2_instance_profile_v4.name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_instance_profile.name
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
 
   tags = {
-    Name = "WriteOnlyEC2-unique-2025-08-10-v4"
+    Name  = "WriteOnlyEC2-${var.stage}"
+    Stage = var.stage
   }
 }
