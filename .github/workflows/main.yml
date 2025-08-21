@@ -108,4 +108,5 @@ jobs:
       - name: Terraform Destroy
         if: always()
         working-directory: terraform
-        run: terraform destroy -auto-approve
+        run: terraform destroy -var-file=${{ env.DEPLOY_STAGE }}.tfvars -auto-approve
+
