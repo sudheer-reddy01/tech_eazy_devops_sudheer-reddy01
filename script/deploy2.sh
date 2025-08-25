@@ -5,7 +5,6 @@ set -e
 STAGE="${DEPLOY_STAGE:-dev}"
 CONFIG_FILE="../configs/${STAGE}.json"
 
-
 if [[ ! -f "$CONFIG_FILE" ]]; then
   echo "[ERROR] Config file not found: $CONFIG_FILE"
   exit 1
@@ -22,6 +21,7 @@ GITHUB_REPO=$(jq -r '.GITHUB_REPO' "$CONFIG_FILE")
 APP_JAR=$(jq -r '.APP_JAR' "$CONFIG_FILE")
 EXPECTED_MSG=$(jq -r '.EXPECTED_MSG' "$CONFIG_FILE")
 APP_ENDPOINT=$(jq -r '.APP_ENDPOINT' "$CONFIG_FILE")
+REPO_IS_PRIVATE=$(jq -r '.REPO_IS_PRIVATE // false' "$CONFIG_FILE")
 
 # ---------- Fetch Terraform Outputs ----------
 echo "[INFO] Fetching values from Terraform outputs..."
@@ -41,6 +41,17 @@ echo "[INFO] S3 Bucket: $S3_BUCKET"
 # ---------- SSH Key Permission Fix ----------
 chmod 400 "$KEY_PATH"
 
+# ---------- Determine Git clone command ----------
+if [[ "$REPO_IS_PRIVATE" == "true" ]]; then
+    if [[ -z "$GH_PAT" ]]; then
+        echo "[ERROR] GH_PAT environment variable is required for private repos."
+        exit 1
+    fi
+    CLONE_CMD="git clone https://${GH_PAT}@github.com/${GITHUB_REPO#https://github.com/} repo"
+else
+    CLONE_CMD="git clone $GITHUB_REPO repo"
+fi
+
 # ---------- Deploy to EC2 ----------
 echo "[INFO] Deploying application to EC2..."
 
@@ -54,7 +65,7 @@ sudo apt-get install -y openjdk-21-jdk maven git awscli curl
 
 echo "[EC2] Cloning repository..."
 rm -rf repo
-git clone "$GITHUB_REPO" repo
+$CLONE_CMD
 cd repo
 
 echo "[EC2] Building application..."
